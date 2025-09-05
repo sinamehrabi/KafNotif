@@ -20,7 +20,6 @@
 
 ### 1. Add Dependency
 
-#### Option A: Via JitPack (Recommended)
 ```xml
 <repositories>
     <repository>
@@ -38,23 +37,7 @@
 </dependencies>
 ```
 
-#### Option B: Via GitHub Packages
-```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/sinamehrabi/KafNotif</url>
-    </repository>
-</repositories>
-
-<dependencies>
-    <dependency>
-        <groupId>com.kafnotif</groupId>
-        <artifactId>kafnotif-core</artifactId>
-        <version>1.0.0</version>
-    </dependency>
-</dependencies>
-```
+[![](https://jitpack.io/v/sinamehrabi/KafNotif.svg)](https://jitpack.io/#sinamehrabi/KafNotif)
 
 ### 2. Configure Auto-Processors (ZERO CODE!)
 

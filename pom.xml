@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>com.kafnotif</groupId>
+    <artifactId>kafnotif-parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    
+    <name>KafNotif Parent</name>
+    <description>🤖 Zero-code Kafka-based notification system with automatic sending via JavaMail, Firebase, Twilio, Slack, Discord</description>
+    <url>https://github.com/sinamehrabi/KafNotif</url>
+    
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    
+    <developers>
+        <developer>
+            <id>sinamehrabi</id>
+            <name>Sina Mehrabi</name>
+            <url>https://github.com/sinamehrabi</url>
+        </developer>
+    </developers>
+    
+    <scm>
+        <connection>scm:git:git://github.com/sinamehrabi/KafNotif.git</connection>
+        <developerConnection>scm:git:ssh://github.com:sinamehrabi/KafNotif.git</developerConnection>
+        <url>https://github.com/sinamehrabi/KafNotif/tree/main</url>
+    </scm>
+    
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    
+    <modules>
+        <module>kafnotif-core</module>
+        <module>kafnotif-examples/automatic-processing-example</module>
+    </modules>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
