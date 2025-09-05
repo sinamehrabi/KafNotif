@@ -52,6 +52,59 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.20.0</version>
         </dependency>
+
+        <!-- Email Support -->
+        <dependency>
+            <groupId>jakarta.mail</groupId>
+            <artifactId>jakarta.mail-api</artifactId>
+            <version>2.1.2</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.2</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Firebase Admin SDK for FCM -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.2.0</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- HTTP Client for webhooks -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.2.1</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Twilio SDK for SMS -->
+        <dependency>
+            <groupId>com.twilio.sdk</groupId>
+            <artifactId>twilio</artifactId>
+            <version>9.14.1</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Spring Boot integration (optional) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+            <version>3.2.0</version>
+            <optional>true</optional>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>6.1.0</version>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>

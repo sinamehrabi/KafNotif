@@ -1,0 +1,77 @@
+# 🤖 AUTOMATIC PROCESSING CONFIGURATION
+# Configure providers and KafNotif handles everything else!
+
+kafnotif:
+  # Global KafNotif settings
+  bootstrap-servers: localhost:9092
+  group-id: automatic-app
+  topic-prefix: notifications
+  threading-mode: VIRTUAL_THREADS
+  concurrency: 5                    # Default concurrency
+  ack-mode: MANUAL                   # Default ACK mode  
+  max-retries: 3
+  enable-dlq: true
+  auto-create-topics: true
+
+spring:
+  application:
+    name: kafnotif-automatic-processing
+
+logging:
+  level:
+    com.kafnotif: INFO
+    com.kafnotif.examples: DEBUG
+    com.kafnotif.spring: DEBUG        # Show auto-processing logs
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# 🔧 PROVIDER CONFIGURATION
+# KafNotif automatically uses concrete implementations if configured
+# Otherwise falls back to console logging for demo purposes
+
+  providers:
+    # 📧 Email via JavaMail (configure to use real SMTP)
+    email:
+      enabled: false                    # Set to true + add credentials to use JavaMail
+      smtp-host: smtp.gmail.com
+      smtp-port: 587
+      username: ${EMAIL_USERNAME:your-email@gmail.com}
+      password: ${EMAIL_APP_PASSWORD:your-app-password}
+      from-email: ${EMAIL_FROM:notifications@yourcompany.com}
+
+    # 🔔 Push via Firebase FCM (configure to use real FCM)
+    firebase:
+      enabled: false                    # Set to true + add service account to use FCM
+      service-account-path: ${FIREBASE_SERVICE_ACCOUNT:/path/to/firebase-service-account.json}
+
+    # 📱 SMS via Twilio (configure to use real Twilio)
+    twilio:
+      enabled: false                    # Set to true + add credentials to use Twilio
+      account-sid: ${TWILIO_ACCOUNT_SID:your-account-sid}
+      auth-token: ${TWILIO_AUTH_TOKEN:your-auth-token}
+      from-phone: ${TWILIO_FROM_PHONE:+1234567890}
+
+    # 💬 Slack via Webhook (configure to use real Slack)
+    slack:
+      enabled: false                    # Set to true + add webhook URL to use Slack
+      webhook-url: ${SLACK_WEBHOOK_URL:https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK}
+
+    # 🎮 Discord via Webhook (configure to use real Discord)
+    discord:
+      enabled: false                    # Set to true + add webhook URL to use Discord
+      webhook-url: ${DISCORD_WEBHOOK_URL:https://discord.com/api/webhooks/YOUR/DISCORD/WEBHOOK}
+
+# 💡 TIP: All providers default to console logging if not configured
+# This way you can test the system without setting up external services!
