@@ -4,10 +4,40 @@
     <groupId>com.kafnotif</groupId>
     <artifactId>kafnotif-core</artifactId>
     <packaging>jar</packaging>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>KafNotif Core Library</name>
-    <description>Core library for Kafka-based notifications/events</description>
+    <description>🤖 Zero-code Kafka-based notification system with automatic sending via JavaMail, Firebase, Twilio, Slack, Discord</description>
     <url>https://github.com/sinamehrabi/KafNotif</url>
+    
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    
+    <developers>
+        <developer>
+            <id>sinamehrabi</id>
+            <name>Sina Mehrabi</name>
+            <url>https://github.com/sinamehrabi</url>
+        </developer>
+    </developers>
+    
+    <scm>
+        <connection>scm:git:git://github.com/sinamehrabi/KafNotif.git</connection>
+        <developerConnection>scm:git:ssh://github.com:sinamehrabi/KafNotif.git</developerConnection>
+        <url>https://github.com/sinamehrabi/KafNotif/tree/main</url>
+    </scm>
+    
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/sinamehrabi/KafNotif</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
