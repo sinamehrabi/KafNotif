@@ -1,6 +1,7 @@
 package com.kafnotif.notifier.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kafnotif.util.JsonUtils;
 import com.kafnotif.model.DiscordNotification;
 import com.kafnotif.model.Event;
 import com.kafnotif.notifier.DiscordNotifier;
@@ -34,7 +35,7 @@ public class DiscordWebhookNotifier implements DiscordNotifier {
     public DiscordWebhookNotifier(String webhookUrl) {
         this.webhookUrl = webhookUrl;
         this.httpClient = HttpClients.createDefault();
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.createObjectMapper();
     }
     
     /**
@@ -43,7 +44,7 @@ public class DiscordWebhookNotifier implements DiscordNotifier {
     public DiscordWebhookNotifier(String webhookUrl, CloseableHttpClient httpClient) {
         this.webhookUrl = webhookUrl;
         this.httpClient = httpClient;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.createObjectMapper();
     }
     
     @Override

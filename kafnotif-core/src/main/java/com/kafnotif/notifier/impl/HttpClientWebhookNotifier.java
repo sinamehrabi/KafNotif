@@ -1,6 +1,7 @@
 package com.kafnotif.notifier.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kafnotif.util.JsonUtils;
 import com.kafnotif.model.Event;
 import com.kafnotif.model.WebhookNotification;
 import com.kafnotif.notifier.WebhookNotifier;
@@ -31,7 +32,7 @@ public class HttpClientWebhookNotifier implements WebhookNotifier {
      */
     public HttpClientWebhookNotifier() {
         this.httpClient = HttpClients.createDefault();
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.createObjectMapper();
     }
     
     /**
@@ -39,7 +40,7 @@ public class HttpClientWebhookNotifier implements WebhookNotifier {
      */
     public HttpClientWebhookNotifier(CloseableHttpClient httpClient) {
         this.httpClient = httpClient;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.createObjectMapper();
     }
     
     @Override

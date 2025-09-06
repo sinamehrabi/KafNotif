@@ -1,6 +1,7 @@
 package com.kafnotif.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kafnotif.util.JsonUtils;
 import com.kafnotif.config.ExecutorFactory;
 import com.kafnotif.config.KafkaTopicManager;
 import com.kafnotif.hooks.AckControl;
@@ -40,7 +41,7 @@ public class NotificationConsumer {
     
     public NotificationConsumer(ConsumerConfig config) {
         this.config = config;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.createObjectMapper();
         this.consumers = createConsumers();
         this.executorService = ExecutorFactory.create(config.getThreadingMode(), config.getMaxPoolSize());
         this.dlqProducer = config.isEnableDlq() ? createDlqProducer() : null;

@@ -1,6 +1,7 @@
 package com.kafnotif.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kafnotif.util.JsonUtils;
 import com.kafnotif.config.KafkaTopicManager;
 import com.kafnotif.model.NotificationEvent;
 import com.kafnotif.model.NotificationType;
@@ -19,7 +20,7 @@ public class NotificationPublisher {
     private static final Logger logger = LoggerFactory.getLogger(NotificationPublisher.class);
     
     private final KafkaProducer<String, String> producer;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = JsonUtils.createObjectMapper();
     private final String baseTopic;
     private final KafkaTopicManager topicManager;
     private final boolean autoCreateTopics;

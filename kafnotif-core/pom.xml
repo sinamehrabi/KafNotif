@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.kafnotif</groupId>
         <artifactId>kafnotif-parent</artifactId>
-        <version>1.0.1</version>
+        <version>1.0.2</version>
     </parent>
     
     <artifactId>kafnotif-core</artifactId>
@@ -85,6 +85,13 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+        
+        <!-- Jackson JSR310 module for Java 8+ date/time types -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
             <version>2.20.0</version>
         </dependency>
 
