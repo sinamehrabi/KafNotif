@@ -30,15 +30,23 @@ public class JavaMailEmailNotifier implements EmailNotifier {
         Properties props = new Properties();
         props.put("mail.smtp.host", smtpHost);
         props.put("mail.smtp.port", smtpPort);
-        props.put("mail.smtp.auth", "true");
+        
+        // Only enable authentication if credentials are provided
+        boolean hasCredentials = username != null && password != null && !username.trim().isEmpty() && !password.trim().isEmpty();
+        props.put("mail.smtp.auth", String.valueOf(hasCredentials));
         props.put("mail.smtp.starttls.enable", "true");
         
-        this.session = Session.getInstance(props, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(username, password);
-            }
-        });
+        if (hasCredentials) {
+            this.session = Session.getInstance(props, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(username, password);
+                }
+            });
+        } else {
+            // No authentication - suitable for development servers like MailCatcher
+            this.session = Session.getInstance(props);
+        }
     }
     
     /**

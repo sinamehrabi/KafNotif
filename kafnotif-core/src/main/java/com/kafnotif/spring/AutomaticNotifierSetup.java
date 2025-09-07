@@ -219,7 +219,10 @@ public class AutomaticNotifierSetup {
         private String fromEmail;
         
         // Getters and setters
-        public boolean isEnabled() { return enabled && username != null && password != null; }
+        public boolean isEnabled() { 
+            // Allow email without authentication for development (e.g., MailCatcher)
+            return enabled; 
+        }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
         public String getSmtpHost() { return smtpHost; }
         public void setSmtpHost(String smtpHost) { this.smtpHost = smtpHost; }
