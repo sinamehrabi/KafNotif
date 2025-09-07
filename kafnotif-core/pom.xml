@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.kafnotif</groupId>
         <artifactId>kafnotif-parent</artifactId>
-        <version>0.0.1</version>
+        <version>0.0.2</version>
     </parent>
     
     <artifactId>kafnotif-core</artifactId>
@@ -67,10 +67,12 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
+        <!-- SLF4J Simple for testing only - applications should provide their own logging implementation -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>${slf4j.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- JUnit 5 for testing -->
