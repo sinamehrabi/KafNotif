@@ -118,10 +118,18 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
                     method.setAccessible(true);
                     Class<?>[] paramTypes = method.getParameterTypes();
                     
-                    // If method takes notification parameter, call it as "before" hook
                     if (paramTypes.length == 1 && paramTypes[0].isAssignableFrom(notification.getClass())) {
+                        // Method takes only notification parameter
                         logger.debug("Calling before hook: {}.{}", bean.getClass().getSimpleName(), method.getName());
                         method.invoke(bean, notification);
+                        return true; // Continue with automatic processing
+                        
+                    } else if (paramTypes.length == 2 && 
+                               paramTypes[0].isAssignableFrom(notification.getClass()) && 
+                               paramTypes[1].isAssignableFrom(AckControl.class)) {
+                        // Method takes notification + AckControl parameters (for manual control)
+                        logger.debug("Calling before hook with AckControl: {}.{}", bean.getClass().getSimpleName(), method.getName());
+                        method.invoke(bean, notification, ackControl);
                         return true; // Continue with automatic processing
                     }
                 } catch (Exception e) {
@@ -136,10 +144,21 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
                 if (success) {
                     logger.debug("✅ Automatic processing completed for {}: {} -> {}", 
                         notification.getNotificationType(), notification.getId(), notification.getRecipient());
+                    
+                    // Auto-acknowledge after successful sending in MANUAL mode if not already acknowledged
+                    if (ackControl != null && !ackControl.isAcknowledged()) {
+                        try {
+                            ackControl.acknowledge();
+                            logger.debug("🔄 Auto-acknowledged after successful sending for manual ACK mode");
+                        } catch (Exception e) {
+                            logger.warn("Failed to auto-acknowledge after successful sending: {}", e.getMessage());
+                        }
+                    }
                 } else {
                     logger.error("❌ Automatic processing failed for {}: {} -> {} - {}", 
                         notification.getNotificationType(), notification.getId(), notification.getRecipient(), 
                         error != null ? error.getMessage() : "Unknown error");
+                    // Don't acknowledge on failure - let retry mechanism handle it
                 }
             }
         };
