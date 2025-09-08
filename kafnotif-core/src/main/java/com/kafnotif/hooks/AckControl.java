@@ -58,6 +58,9 @@ public class AckControl {
     
     /**
      * Acknowledge this message asynchronously
+     * 
+     * WARNING: This method can cause thread safety issues when called from virtual threads
+     * as KafkaConsumer is not thread-safe. Use acknowledge() instead for manual ACK mode.
      */
     public void acknowledgeAsync() {
         if (acknowledged) {

@@ -263,9 +263,11 @@ public class NotificationConsumer {
         if (ackControl != null && !ackControl.isAcknowledged()) {
             try {
                 if (config.getAckMode() == AckMode.MANUAL_IMMEDIATE) {
-                    ackControl.acknowledge(); // Synchronous ACK
+                    ackControl.acknowledge(); // Synchronous ACK on consumer thread
                 } else if (config.getAckMode() == AckMode.MANUAL) {
-                    ackControl.acknowledgeAsync(); // Asynchronous ACK
+                    // Use synchronous ACK to avoid thread safety issues with virtual threads
+                    // The async nature is already provided by virtual threads processing
+                    ackControl.acknowledge(); 
                 }
             } catch (Exception e) {
                 logger.error("Failed to acknowledge message: {}", e.getMessage(), e);
