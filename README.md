@@ -32,7 +32,7 @@
     <dependency>
         <groupId>com.github.sinamehrabi</groupId>
         <artifactId>KafNotif</artifactId>
-        <version>v0.0.3</version>
+        <version>v0.0.4</version>
     </dependency>
 </dependencies>
 ```
