@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.kafnotif.hooks.Acknowledgment;
 import com.kafnotif.hooks.KafNotifAcknowledgment;
+import com.kafnotif.hooks.ThreadSafeAckControl;
 import org.apache.kafka.common.TopicPartition;
 import java.util.stream.Collectors;
 
@@ -206,12 +207,12 @@ public class NotificationConsumer {
                 logger.debug("🔄 Processing notification {} from topic {} [consumer-{}]", 
                            notification.getId(), record.topic(), consumerIndex);
                 
-                // Call beforeSend hook (for backward compatibility with AckControl)
+                // Call beforeSend hook (using thread-safe adapter for backward compatibility)
                 NotificationHooks hooks = config.getHooks();
-                AckControl legacyAckControl = (config.getAckMode() != AckMode.AUTO) ? 
-                    new AckControl(consumer, record) : null;
+                AckControl threadSafeAckControl = (config.getAckMode() != AckMode.AUTO) ? 
+                    new ThreadSafeAckControl(consumer, record, acknowledgment) : null;
                     
-                if (hooks != null && !hooks.beforeSend(notification, legacyAckControl)) {
+                if (hooks != null && !hooks.beforeSend(notification, threadSafeAckControl)) {
                     logger.info("⏭️ Notification {} skipped by beforeSend hook", notification.getId());
                     // Always acknowledge when skipped (like your production approach)
                     acknowledgment.acknowledge();
@@ -221,9 +222,9 @@ public class NotificationConsumer {
                 // Process notification with retries
                 boolean success = processWithRetries(notification);
                 
-                // Call afterSend hook (using legacy AckControl for compatibility)
+                // Call afterSend hook (using thread-safe adapter for compatibility)
                 if (hooks != null) {
-                    hooks.afterSend(notification, success, null, legacyAckControl);
+                    hooks.afterSend(notification, success, null, threadSafeAckControl);
                 }
                 
                 if (success) {
