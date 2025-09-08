@@ -22,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,8 @@ public class NotificationConsumer {
     private final KafkaProducer<String, String> dlqProducer;
     private final KafkaTopicManager topicManager;
     
+    // Locks per consumer for thread-safe acknowledgment
+    private final Map<KafkaConsumer<String, String>, Object> consumerLocks = new ConcurrentHashMap<>();
     
     public NotificationConsumer(ConsumerConfig config) {
         this.config = config;
@@ -111,21 +114,6 @@ public class NotificationConsumer {
         return running.get();
     }
     
-    private KafkaConsumer<String, String> createSingleConsumer() {
-        Properties props = new Properties();
-        props.put(org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers());
-        props.put(org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG, config.getGroupId());
-        props.put(org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, String.valueOf(config.isAutoCommit()));
-        
-        if (!config.isAutoCommit()) {
-            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
-        }
-        
-        return new KafkaConsumer<>(props);
-    }
     
     private List<KafkaConsumer<String, String>> createConsumers() {
         List<KafkaConsumer<String, String>> consumerList = new ArrayList<>();
@@ -153,6 +141,7 @@ public class NotificationConsumer {
             consumer.subscribe(topics);
             
             consumerList.add(consumer);
+            consumerLocks.put(consumer, new Object()); // Initialize lock for this consumer
             logger.debug("Created consumer {} subscribing to topics: {}", i, topics);
         }
         
@@ -202,8 +191,6 @@ public class NotificationConsumer {
                              KafkaConsumer<String, String> consumer, int consumerIndex) {
         
         CompletableFuture.runAsync(() -> {
-            // Create dedicated consumer for this virtual thread to avoid thread safety issues
-            KafkaConsumer<String, String> threadConsumer = createSingleConsumer();
             AckControl ackControl = null;
             try {
                 // Deserialize notification
@@ -212,9 +199,9 @@ public class NotificationConsumer {
                 logger.debug("🔄 Processing notification {} from topic {} [consumer-{}]", 
                            notification.getId(), record.topic(), consumerIndex);
                 
-                // Create ACK control for manual acknowledgment modes using thread-specific consumer
+                // Create ACK control for manual acknowledgment modes using original consumer
                 if (config.getAckMode() != AckMode.AUTO) {
-                    ackControl = new AckControl(threadConsumer, record);
+                    ackControl = new ThreadSafeAckControl(consumer, record, consumerLocks.get(consumer));
                 }
                 
                 // Call beforeSend hook
@@ -225,7 +212,7 @@ public class NotificationConsumer {
                     // ACK if not already acknowledged and in AUTO mode
                     if (config.getAckMode() == AckMode.AUTO || 
                         (ackControl != null && !ackControl.isAcknowledged())) {
-                        acknowledgeMessage(ackControl, record, threadConsumer);
+                        acknowledgeMessage(ackControl, record, consumer);
                     }
                     return;
                 }
@@ -244,7 +231,7 @@ public class NotificationConsumer {
                     // ACK successful messages if not already acknowledged
                     if (config.getAckMode() == AckMode.AUTO || 
                         (ackControl != null && !ackControl.isAcknowledged())) {
-                        acknowledgeMessage(ackControl, record, threadConsumer);
+                        acknowledgeMessage(ackControl, record, consumer);
                     }
                 } else {
                     logger.error("❌ Failed to process notification after all retries: {}", notification.getId());
@@ -257,7 +244,7 @@ public class NotificationConsumer {
                     // ACK failed messages if configured to do so (or if auto mode)
                     if (config.getAckMode() == AckMode.AUTO || 
                         (ackControl != null && !ackControl.isAcknowledged())) {
-                        acknowledgeMessage(ackControl, record, threadConsumer);
+                        acknowledgeMessage(ackControl, record, consumer);
                     }
                 }
                 
@@ -267,16 +254,7 @@ public class NotificationConsumer {
                 // ACK error messages to prevent infinite reprocessing
                 if (config.getAckMode() == AckMode.AUTO || 
                     (ackControl != null && !ackControl.isAcknowledged())) {
-                    acknowledgeMessage(ackControl, record, threadConsumer);
-                }
-            } finally {
-                // Clean up thread-specific consumer
-                if (threadConsumer != null) {
-                    try {
-                        threadConsumer.close();
-                    } catch (Exception e) {
-                        logger.debug("Error closing thread consumer: {}", e.getMessage());
-                    }
+                    acknowledgeMessage(ackControl, record, consumer);
                 }
             }
         }, executorService);
@@ -395,6 +373,32 @@ public class NotificationConsumer {
                 }
             } catch (Exception e) {
                 logger.warn("Could not create topic for type: {}", typeName);
+            }
+        }
+    }
+    
+    /**
+     * Thread-safe wrapper for AckControl that synchronizes access to the KafkaConsumer
+     */
+    private static class ThreadSafeAckControl extends AckControl {
+        private final Object consumerLock;
+        
+        public ThreadSafeAckControl(KafkaConsumer<String, String> consumer, ConsumerRecord<String, String> record, Object lock) {
+            super(consumer, record);
+            this.consumerLock = lock;
+        }
+        
+        @Override
+        public void acknowledge() {
+            synchronized (consumerLock) {
+                super.acknowledge();
+            }
+        }
+        
+        @Override
+        public void acknowledgeAsync() {
+            synchronized (consumerLock) {
+                super.acknowledgeAsync();
             }
         }
     }
