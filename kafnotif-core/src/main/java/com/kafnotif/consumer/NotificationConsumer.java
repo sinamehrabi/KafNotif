@@ -24,6 +24,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import com.kafnotif.hooks.Acknowledgment;
+import com.kafnotif.hooks.KafNotifAcknowledgment;
+import org.apache.kafka.common.TopicPartition;
 import java.util.stream.Collectors;
 
 /**
@@ -41,8 +45,8 @@ public class NotificationConsumer {
     private final KafkaProducer<String, String> dlqProducer;
     private final KafkaTopicManager topicManager;
     
-    // Locks per consumer for thread-safe acknowledgment
-    private final Map<KafkaConsumer<String, String>, Object> consumerLocks = new ConcurrentHashMap<>();
+    // Thread-safe acknowledgment queue (like Spring Kafka approach)
+    private final ConcurrentLinkedQueue<KafNotifAcknowledgment.AckRequest> ackQueue = new ConcurrentLinkedQueue<>();
     
     public NotificationConsumer(ConsumerConfig config) {
         this.config = config;
@@ -125,9 +129,16 @@ public class NotificationConsumer {
             props.put(org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             props.put(org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             props.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.getOffsetReset());
-            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, config.isAutoCommit());
-            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000);
-            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, 10000);
+            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"); // Always manual commit for reliability
+            
+            // Configure cooperative rebalancing to prevent message redelivery (like your production setup)
+            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, 
+                     "org.apache.kafka.clients.consumer.CooperativeStickyAssignor");
+            
+            // Production-ready timeouts (based on your config)
+            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "45000"); // 45 seconds
+            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, "15000"); // 15 seconds
+            props.put(org.apache.kafka.clients.consumer.ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "60000"); // 60 seconds
             props.put(org.apache.kafka.clients.consumer.ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 500);
             
             if (!config.isAutoCommit()) {
@@ -141,7 +152,6 @@ public class NotificationConsumer {
             consumer.subscribe(topics);
             
             consumerList.add(consumer);
-            consumerLocks.put(consumer, new Object()); // Initialize lock for this consumer
             logger.debug("Created consumer {} subscribing to topics: {}", i, topics);
         }
         
@@ -164,18 +174,13 @@ public class NotificationConsumer {
     private void consumeLoop(KafkaConsumer<String, String> consumer, int consumerIndex) {
         try {
             while (running.get()) {
+                // Process pending acknowledgments on the main consumer thread (like Spring Kafka)
+                processPendingAcknowledgments(consumer);
+                
                 ConsumerRecords<String, String> records = consumer.poll(config.getPollTimeout());
                 
                 for (ConsumerRecord<String, String> record : records) {
                     processRecord(record, consumer, consumerIndex);
-                }
-                
-                if (!config.isAutoCommit()) {
-                    consumer.commitAsync((offsets, exception) -> {
-                        if (exception != null) {
-                            logger.error("Failed to commit offsets: {}", exception.getMessage());
-                        }
-                    });
                 }
             }
         } catch (Exception e) {
@@ -191,7 +196,9 @@ public class NotificationConsumer {
                              KafkaConsumer<String, String> consumer, int consumerIndex) {
         
         CompletableFuture.runAsync(() -> {
-            AckControl ackControl = null;
+            // Create thread-safe acknowledgment (Spring Kafka style)
+            Acknowledgment acknowledgment = new KafNotifAcknowledgment(record, ackQueue);
+            
             try {
                 // Deserialize notification
                 NotificationEvent notification = objectMapper.readValue(record.value(), NotificationEvent.class);
@@ -199,40 +206,28 @@ public class NotificationConsumer {
                 logger.debug("🔄 Processing notification {} from topic {} [consumer-{}]", 
                            notification.getId(), record.topic(), consumerIndex);
                 
-                // Create ACK control for manual acknowledgment modes using original consumer
-                if (config.getAckMode() != AckMode.AUTO) {
-                    ackControl = new ThreadSafeAckControl(consumer, record, consumerLocks.get(consumer));
-                }
-                
-                // Call beforeSend hook
+                // Call beforeSend hook (for backward compatibility with AckControl)
                 NotificationHooks hooks = config.getHooks();
-                if (hooks != null && !hooks.beforeSend(notification, ackControl)) {
-                    logger.info("⏭️ Notification {} skipped by beforeSend hook", notification.getId());
+                AckControl legacyAckControl = (config.getAckMode() != AckMode.AUTO) ? 
+                    new AckControl(consumer, record) : null;
                     
-                    // ACK if not already acknowledged and in AUTO mode
-                    if (config.getAckMode() == AckMode.AUTO || 
-                        (ackControl != null && !ackControl.isAcknowledged())) {
-                        acknowledgeMessage(ackControl, record, consumer);
-                    }
+                if (hooks != null && !hooks.beforeSend(notification, legacyAckControl)) {
+                    logger.info("⏭️ Notification {} skipped by beforeSend hook", notification.getId());
+                    // Always acknowledge when skipped (like your production approach)
+                    acknowledgment.acknowledge();
                     return;
                 }
                 
                 // Process notification with retries
                 boolean success = processWithRetries(notification);
                 
-                // Call afterSend hook
+                // Call afterSend hook (using legacy AckControl for compatibility)
                 if (hooks != null) {
-                    hooks.afterSend(notification, success, null, ackControl);
+                    hooks.afterSend(notification, success, null, legacyAckControl);
                 }
                 
                 if (success) {
                     logger.info("✅ Successfully processed notification: {}", notification.getId());
-                    
-                    // ACK successful messages if not already acknowledged
-                    if (config.getAckMode() == AckMode.AUTO || 
-                        (ackControl != null && !ackControl.isAcknowledged())) {
-                        acknowledgeMessage(ackControl, record, consumer);
-                    }
                 } else {
                     logger.error("❌ Failed to process notification after all retries: {}", notification.getId());
                     
@@ -240,22 +235,16 @@ public class NotificationConsumer {
                     if (config.isEnableDlq()) {
                         sendToDlq(notification, record.topic());
                     }
-                    
-                    // ACK failed messages if configured to do so (or if auto mode)
-                    if (config.getAckMode() == AckMode.AUTO || 
-                        (ackControl != null && !ackControl.isAcknowledged())) {
-                        acknowledgeMessage(ackControl, record, consumer);
-                    }
                 }
+                
+                // Always acknowledge at the end (like your production approach)
+                acknowledgment.acknowledge();
                 
             } catch (Exception e) {
                 logger.error("💥 Error processing record from topic {}: {}", record.topic(), e.getMessage(), e);
                 
-                // ACK error messages to prevent infinite reprocessing
-                if (config.getAckMode() == AckMode.AUTO || 
-                    (ackControl != null && !ackControl.isAcknowledged())) {
-                    acknowledgeMessage(ackControl, record, consumer);
-                }
+                // Always acknowledge even on error to prevent infinite reprocessing (like your production approach)
+                acknowledgment.acknowledge();
             }
         }, executorService);
     }
@@ -399,6 +388,45 @@ public class NotificationConsumer {
         public void acknowledgeAsync() {
             synchronized (consumerLock) {
                 super.acknowledgeAsync();
+            }
+        }
+    }
+    
+    /**
+     * Process pending acknowledgments on the main consumer thread (Spring Kafka style)
+     */
+    private void processPendingAcknowledgments(KafkaConsumer<String, String> consumer) {
+        Map<TopicPartition, Long> offsetsToCommit = new HashMap<>();
+        
+        // Collect all pending acknowledgments
+        KafNotifAcknowledgment.AckRequest ackRequest;
+        while ((ackRequest = ackQueue.poll()) != null) {
+            TopicPartition tp = ackRequest.getTopicPartition();
+            long offset = ackRequest.getOffset() + 1; // Kafka commits the next offset
+            
+            // Keep the highest offset for each partition
+            offsetsToCommit.merge(tp, offset, Math::max);
+        }
+        
+        // Commit collected offsets
+        if (!offsetsToCommit.isEmpty()) {
+            try {
+                Map<TopicPartition, org.apache.kafka.clients.consumer.OffsetAndMetadata> commitOffsets = 
+                    offsetsToCommit.entrySet().stream()
+                        .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> new org.apache.kafka.clients.consumer.OffsetAndMetadata(entry.getValue())
+                        ));
+                
+                consumer.commitAsync(commitOffsets, (offsets, exception) -> {
+                    if (exception != null) {
+                        logger.error("❌ Failed to commit offsets: {}", exception.getMessage());
+                    } else {
+                        logger.debug("✅ Successfully committed {} partitions", offsets.size());
+                    }
+                });
+            } catch (Exception e) {
+                logger.error("❌ Error committing offsets: {}", e.getMessage(), e);
             }
         }
     }
