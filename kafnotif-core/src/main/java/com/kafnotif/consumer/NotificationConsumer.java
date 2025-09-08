@@ -367,31 +367,6 @@ public class NotificationConsumer {
         }
     }
     
-    /**
-     * Thread-safe wrapper for AckControl that synchronizes access to the KafkaConsumer
-     */
-    private static class ThreadSafeAckControl extends AckControl {
-        private final Object consumerLock;
-        
-        public ThreadSafeAckControl(KafkaConsumer<String, String> consumer, ConsumerRecord<String, String> record, Object lock) {
-            super(consumer, record);
-            this.consumerLock = lock;
-        }
-        
-        @Override
-        public void acknowledge() {
-            synchronized (consumerLock) {
-                super.acknowledge();
-            }
-        }
-        
-        @Override
-        public void acknowledgeAsync() {
-            synchronized (consumerLock) {
-                super.acknowledgeAsync();
-            }
-        }
-    }
     
     /**
      * Process pending acknowledgments on the main consumer thread (Spring Kafka style)
