@@ -64,11 +64,17 @@ public @interface KafNotifListener {
     String topicPrefix() default "";
     
     /**
-     * Optional method name for after-send hook.
-     * The method should have the signature:
-     * public void methodName(NotificationEvent notification, boolean success, Exception error, AckControl ackControl)
+     * Optional method name for after-send hook that OVERRIDES default behavior.
+     * When specified, your method has full control over post-processing including acknowledgment.
      * 
-     * @return the method name for after-send hook, empty string means no after-send hook
+     * Supported method signatures:
+     * - public void methodName(NotificationEvent notification, boolean success, Exception error, AckControl ackControl)
+     * - public void methodName(NotificationEvent notification, boolean success, Throwable error, AckControl ackControl)  
+     * - public void methodName(NotificationEvent notification, boolean success)
+     * 
+     * If your method doesn't acknowledge manually, the message won't be acknowledged automatically.
+     * 
+     * @return the method name for after-send hook, empty string means use default auto-acknowledge behavior
      */
     String afterSend() default "";
 }

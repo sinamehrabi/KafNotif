@@ -154,10 +154,11 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
             
             @Override
             public void afterSend(NotificationEvent notification, boolean success, Throwable error, AckControl ackControl) {
-                // Call user's afterSend method if specified
+                // If user specified a custom afterSend method, call it and let it handle everything
                 if (finalAfterSendMethod != null) {
                     try {
-                        logger.debug("Calling afterSend hook: {}.{}", bean.getClass().getSimpleName(), finalAfterSendMethod.getName());
+                        logger.debug("Calling custom afterSend hook: {}.{} (overrides default behavior)", 
+                            bean.getClass().getSimpleName(), finalAfterSendMethod.getName());
                         finalAfterSendMethod.setAccessible(true);
                         
                         // Call method based on its signature
@@ -169,12 +170,19 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
                             // Simplified signature: (NotificationEvent, boolean)
                             finalAfterSendMethod.invoke(bean, notification, success);
                         }
+                        
+                        // Custom method takes full control - no default auto-acknowledge
+                        logger.debug("✅ Custom afterSend hook completed - user has full control");
+                        return; // Exit early - user method handles everything
+                        
                     } catch (Exception e) {
-                        logger.error("Error in afterSend hook {}.{}: {}", 
+                        logger.error("Error in custom afterSend hook {}.{}: {}", 
                             bean.getClass().getSimpleName(), finalAfterSendMethod.getName(), e.getMessage(), e);
+                        // Fall through to default behavior on error
                     }
                 }
                 
+                // Default behavior (only executed if no custom method or custom method failed)
                 if (success) {
                     logger.debug("✅ Automatic processing completed for {}: {} -> {}", 
                         notification.getNotificationType(), notification.getId(), notification.getRecipient());
