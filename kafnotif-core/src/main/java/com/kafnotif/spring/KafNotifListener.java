@@ -3,6 +3,7 @@ package com.kafnotif.spring;
 import com.kafnotif.config.ThreadingMode;
 import com.kafnotif.consumer.AckMode;
 import com.kafnotif.model.NotificationType;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.lang.annotation.*;
@@ -16,6 +17,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Component
+@EventListener
 public @interface KafNotifListener {
     
     /**

@@ -1,96 +1,144 @@
-# KafNotif
+# 🚀 KafNotif - Zero-Code Kafka Notification System
 
-🤖 **ZERO-CODE** Kafka-based notification system for Java applications. Just add `@KafNotifListener` and KafNotif **automatically sends** notifications via JavaMail, Firebase, Twilio, Slack, Discord, and HTTP webhooks!
+**The most powerful, production-ready notification system with automatic sending and complete lifecycle control**
 
-## ✨ Key Features
+[![JitPack](https://jitpack.io/v/sinamehrabi/KafNotif.svg)](https://jitpack.io/#sinamehrabi/KafNotif)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- 🤖 **AUTOMATIC SENDING**: Zero-code notification processing via concrete providers
-- 📝 **Simple Annotations**: Just `@KafNotifListener` - no implementation needed!
-- 🏭 **Production-Ready**: JavaMail, Firebase FCM, Twilio, Slack, Discord, HTTP webhooks
-- 🚀 **Auto-Topic Creation**: Automatically creates Kafka topics when first used
-- 📧 **Multiple Types**: Email, SMS, Push, Slack, Discord, Webhooks
-- 🎯 **Per-Type Config**: Different concurrency, ACK modes, threading per notification type
-- 🔧 **Framework Agnostic**: Works with Spring Boot, Quarkus, Vert.x, or standalone Java
-- 🧵 **Threading Control**: OS threads, virtual threads, or single-threaded
-- 🔄 **Smart ACK Control**: Auto, manual, or manual-immediate acknowledgment
-- 🪝 **Optional Hooks**: Add custom logic before/after automatic sending
-- ⚡ **High Performance**: Built-in retry mechanisms and dead letter queues
+## ✨ What is KafNotif?
 
-## 🚀 Quick Start (Spring Boot)
+KafNotif revolutionizes notification systems by eliminating complex infrastructure code. Simply add `@KafNotifListener` to your methods and KafNotif automatically handles:
 
-### 1. Add Dependency
+- 📧 **Email** sending via JavaMail (Gmail, Outlook, MailCatcher)
+- 📱 **Push notifications** via Firebase Cloud Messaging (FCM)  
+- 📲 **SMS** via Twilio
+- 💬 **Slack & Discord** webhooks
+- 🌐 **HTTP webhooks** for any API
+- 🎯 **Custom afterSend hooks** for complete lifecycle control
 
-```xml
-<repositories>
-    <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
-    </repository>
-</repositories>
+## 🎯 Key Features
 
-<dependencies>
-    <dependency>
-        <groupId>com.github.sinamehrabi</groupId>
-        <artifactId>KafNotif</artifactId>
-        <version>v0.1.2</version>
-    </dependency>
-</dependencies>
-```
-
-[![](https://jitpack.io/v/sinamehrabi/KafNotif.svg)](https://jitpack.io/#sinamehrabi/KafNotif)
-
-### 2. Configure Auto-Processors (ZERO CODE!)
-
+### 🤖 **Zero-Code Automation**
 ```java
-@Component
-public class NotificationProcessors {
-    
-    // 📧 EMAIL: Automatically sent via JavaMail!
-    @KafNotifListener(
-        value = NotificationType.EMAIL,
-        concurrency = 10,
-        ackMode = AckMode.MANUAL_IMMEDIATE
-    )
-    public void emailProcessor() {
-        // THAT'S IT! KafNotif automatically sends via JavaMail
-        // Optional: Add custom validation/logging here
-    }
-    
-    // 📱 SMS: Automatically sent via Twilio!  
-    @KafNotifListener(value = NotificationType.SMS, concurrency = 5)
-    public void smsProcessor() {} // Twilio SMS sent automatically!
-    
-    // 🔔 PUSH: Automatically sent via Firebase!
-    @KafNotifListener(value = NotificationType.PUSH, concurrency = 2)
-    public void pushProcessor() {} // Firebase FCM sent automatically!
+@KafNotifListener(NotificationType.EMAIL)
+public void handleEmail(EmailNotification email) {
+    // KafNotif automatically sends the email!
+    System.out.println("📧 Processing: " + email.getSubject());
 }
 ```
 
-### 3. Publish Notifications
-
+### 🎛️ **Complete Lifecycle Control with AfterSend Hooks**
 ```java
-// Email notification
-EmailNotification email = NotificationBuilder.email("user@example.com")
-    .subject("Welcome!")
-    .body("Welcome to our service")
-    .priority(NotificationPriority.HIGH)
-    .build();
+@KafNotifListener(
+    value = NotificationType.EMAIL,
+    ackMode = AckMode.MANUAL,
+    afterSend = "emailAfterHook"  // 🎯 Override default behavior
+)
+public void emailListener(EmailNotification email) {
+    System.out.println("🔔 Email will be sent: " + email.getSubject());
+}
 
-// SMS notification
-SmsNotification sms = NotificationBuilder.sms("+1234567890")
-    .message("Your verification code is: 123456")
-    .build();
-
-// Push notification
-PushNotification push = NotificationBuilder.push("device-token")
-    .title("New Message")
-    .body("You have a new message")
-    .platform(PushNotification.PushPlatform.ANDROID)
-    .build();
+// Your custom afterSend hook completely overrides default behavior
+public void emailAfterHook(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+    if (success) {
+        // Custom success logic
+        saveToDatabase(email.getId(), "SENT");
+        sendAnalytics("email_sent", email.getRecipient());
+        ackControl.acknowledge(); // YOU control acknowledgment
+    } else {
+        // Custom error handling
+        if (isRetryableError(error)) {
+            // Don't acknowledge - let it retry
+            logger.warn("Retryable error: {}", error.getMessage());
+        } else {
+            // Acknowledge to skip permanently failed messages
+            ackControl.acknowledge();
+            logPermanentFailure(email, error);
+        }
+    }
+}
 ```
 
-### 4. Publish & Watch Magic Happen!
+### ⚡ **High Performance**
+- **Virtual Threads** support (Java 21+)
+- **Configurable concurrency** per notification type
+- **Auto/Manual acknowledgment** modes
+- **Thread-safe** acknowledgment with Spring Kafka patterns
 
+### 🏗️ **Production Ready**
+- **Auto-topic creation** when publishing
+- **Dead Letter Queue** for failed messages
+- **Retry mechanisms** with configurable strategies
+- **Comprehensive monitoring** and logging
+
+## 🚀 Quick Start
+
+### 1. Add Dependency
+```xml
+<dependency>
+    <groupId>com.github.sinamehrabi</groupId>
+    <artifactId>KafNotif</artifactId>
+    <version>v0.1.3</version>
+</dependency>
+```
+
+### 2. Configure (application.yml)
+```yaml
+kafnotif:
+  bootstrap-servers: localhost:9092
+  providers:
+    email:
+      enabled: true
+      smtp-host: localhost  # MailCatcher for development
+      smtp-port: 1025
+      from-email: noreply@yourapp.com
+      # For production: add username/password
+```
+
+### 3. Create Notification Listeners
+```java
+@Component
+public class NotificationListeners {
+    
+    // 🎯 Basic listener with auto-sending
+    @KafNotifListener(NotificationType.EMAIL)
+    public void handleEmail(EmailNotification email) {
+        System.out.println("📧 Processing: " + email.getSubject());
+        // KafNotif automatically sends the email!
+    }
+    
+    // 🎛️ Advanced listener with complete control
+    @KafNotifListener(
+        value = NotificationType.EMAIL,
+        concurrency = 5,
+        ackMode = AckMode.MANUAL,
+        threadingMode = ThreadingMode.VIRTUAL_THREADS,
+        afterSend = "customAfterHook"
+    )
+    public void advancedEmailHandler(EmailNotification email) {
+        // Add pre-processing logic
+        enrichEmailContent(email);
+    }
+    
+    // 🎯 Custom afterSend hook with complete override
+    public void customAfterHook(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+        if (success) {
+            updateDatabase(email.getId(), "DELIVERED");
+            trackAnalytics("email_success", email.getRecipient());
+            ackControl.acknowledge();
+        } else {
+            handleFailure(email, error);
+            if (shouldRetry(error)) {
+                // Don't acknowledge - let it retry
+            } else {
+                ackControl.acknowledge(); // Skip permanently failed
+            }
+        }
+    }
+}
+```
+
+### 4. Publish Notifications
 ```java
 @RestController
 public class NotificationController {
@@ -99,205 +147,300 @@ public class NotificationController {
     private NotificationPublisher publisher;
     
     @PostMapping("/send-email")
-    public void sendEmail() {
-        EmailNotification email = NotificationBuilder.email("user@example.com")
-            .subject("Welcome!")
-            .body("Welcome to our service")
+    public String sendEmail() {
+        publisher.publishNotification(EmailNotification.builder()
+            .recipient("user@example.com")
+            .subject("Welcome to our platform!")
+            .body("Thanks for joining us!")
+            .build());
+        return "📧 Email queued for sending!";
+    }
+}
+```
+
+## 🎛️ AfterSend Hooks - Complete Guide
+
+### 🌟 **Why Use AfterSend Hooks?**
+
+AfterSend hooks give you **complete control** over what happens after notification sending:
+- 📊 **Analytics tracking** for successful/failed sends
+- 🗃️ **Database updates** for notification status
+- 🔄 **Custom retry logic** for specific error types
+- 🎯 **Manual acknowledgment control** for exact-once processing
+- 🚨 **Custom error handling** and alerting
+
+### 🎯 **How AfterSend Override Works**
+
+When you specify `afterSend = "methodName"`:
+- ✅ **Your method completely overrides** default auto-acknowledge behavior
+- ✅ **No automatic acknowledgment** happens - YOU are in control
+- ✅ **Full access** to success/failure status and error details
+- ✅ **Manual acknowledgment control** for retry behavior
+
+### 📝 **Supported Method Signatures**
+
+```java
+// 🎯 Full control signature (recommended)
+public void afterHook(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+    // Full control with acknowledgment management
+}
+
+// 🎯 Alternative with Throwable
+public void afterHook(EmailNotification email, boolean success, Throwable error, AckControl ackControl) {
+    // Same as above but with Throwable instead of Exception
+}
+
+// 🎯 Simplified signature
+public void afterHook(EmailNotification email, boolean success) {
+    // Basic success/failure handling without acknowledgment control
+}
+```
+
+### 🎪 **Real-World Examples**
+
+#### 📊 **Analytics Tracking**
+```java
+@KafNotifListener(
+    value = NotificationType.EMAIL,
+    afterSend = "trackEmailMetrics"
+)
+public void emailHandler(EmailNotification email) {
+    enrichWithUserData(email);
+}
+
+public void trackEmailMetrics(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+    if (success) {
+        analytics.track("email_delivered", Map.of(
+            "recipient", email.getRecipient(),
+            "campaign", email.getMetadata().get("campaign"),
+            "delivered_at", Instant.now()
+        ));
+        ackControl.acknowledge();
+    } else {
+        analytics.track("email_failed", Map.of(
+            "recipient", email.getRecipient(),
+            "error_type", error.getClass().getSimpleName(),
+            "error_message", error.getMessage()
+        ));
+        
+        // Custom retry logic
+        if (isTemporaryError(error)) {
+            // Don't acknowledge - let Kafka retry
+            logger.info("Temporary error, will retry: {}", error.getMessage());
+        } else {
+            // Permanent error - acknowledge to skip
+            ackControl.acknowledge();
+            logger.error("Permanent error, skipping: {}", error.getMessage());
+        }
+    }
+}
+```
+
+#### 🗃️ **Database Integration**
+```java
+@KafNotifListener(
+    value = NotificationType.EMAIL,
+    afterSend = "updateDatabase"
+)
+public void emailHandler(EmailNotification email) {
+    validateEmailContent(email);
+}
+
+public void updateDatabase(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+    try {
+        NotificationLog log = NotificationLog.builder()
+            .notificationId(email.getId())
+            .recipient(email.getRecipient())
+            .status(success ? "DELIVERED" : "FAILED")
+            .errorMessage(error != null ? error.getMessage() : null)
+            .processedAt(Instant.now())
             .build();
             
-        publisher.publish(email); // Auto-creates topic, auto-sends via JavaMail!
+        notificationRepository.save(log);
+        
+        if (success) {
+            // Update user engagement metrics
+            userService.recordEmailEngagement(email.getRecipient());
+        }
+        
+        ackControl.acknowledge();
+    } catch (Exception dbError) {
+        logger.error("Database update failed", dbError);
+        // Still acknowledge to prevent reprocessing
+        ackControl.acknowledge();
     }
 }
 ```
 
-**🎉 Result**: KafNotif automatically sends the email via JavaMail - zero implementation needed!
-
-### 4. Framework-Agnostic Consumer
-
+#### 🔄 **Multi-Step Workflow**
 ```java
-// Basic consumer
-NotificationConsumer consumer = KafNotif.createConsumer("localhost:9092", "my-app");
-consumer.start();
+@KafNotifListener(
+    value = NotificationType.EMAIL,
+    afterSend = "triggerWorkflow"
+)
+public void emailHandler(EmailNotification email) {
+    addTrackingPixel(email);
+}
 
-// Advanced configuration
-ConsumerConfig config = new ConsumerConfig("my-app")
-    .bootstrapServers("localhost:9092")
-    .threadingMode(ThreadingMode.VIRTUAL_THREADS)
-    .concurrency(5)
-    .autoCommit(false)
-    .hooks(new CustomHooks());
-
-NotificationConsumer consumer = new NotificationConsumer(config);
-consumer.start();
-```
-
-
-## Supported Notification Types
-
-| Type | Description | Example Use Cases |
-|------|-------------|-------------------|
-| 📧 **Email** | HTML/Text emails | User registration, newsletters, reports |
-| 📱 **SMS** | Text messages | OTP codes, alerts, reminders |
-| 🔔 **Push** | Mobile/Web push notifications | App notifications, breaking news |
-| 💬 **Slack** | Slack channel messages | Team notifications, alerts |
-| 🎮 **Discord** | Discord webhook messages | Community updates, bot messages |
-| 🔗 **Webhook** | HTTP callbacks | Integrations, custom endpoints |
-
-## Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Producer      │───▶│   Kafka Topics  │───▶│   Consumer      │
-│   Service       │    │                 │    │   Service       │
-│                 │    │ notifications.* │    │                 │
-│ • REST API      │    │ • email         │    │ • Email Provider│
-│ • Event Creation│    │ • sms           │    │ • SMS Provider  │
-│ • Publishing    │    │ • push          │    │ • Push Provider │
-└─────────────────┘    │ • slack         │    │ • Webhook Client│
-                       │ • discord       │    └─────────────────┘
-                       │ • webhook       │
-                       └─────────────────┘
-```
-
-## 🎯 Before vs After
-
-### Traditional Way (Manual Implementation)
-```java
-@KafkaListener(topics = "email-notifications")  
-public void processEmail(EmailNotification email) {
-    // YOU have to implement all this JavaMail code:
-    Session session = Session.getDefaultInstance(smtpProps, authenticator);
-    MimeMessage message = new MimeMessage(session);
-    message.setFrom(new InternetAddress(fromEmail));
-    message.addRecipient(Message.RecipientType.TO, new InternetAddress(email.getRecipient()));
-    message.setSubject(email.getSubject());
-    message.setText(email.getBody());
-    Transport.send(message);
-    // Plus error handling, retries, etc...
+public void triggerWorkflow(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+    if (success) {
+        // Trigger next step in workflow
+        switch (email.getMetadata().get("workflow_type")) {
+            case "welcome":
+                scheduleFollowUpEmail(email.getRecipient(), Duration.ofDays(3));
+                break;
+            case "order_confirmation":
+                updateOrderStatus(email.getMetadata().get("order_id"), "EMAIL_SENT");
+                break;
+            case "password_reset":
+                logSecurityEvent("password_reset_email_sent", email.getRecipient());
+                break;
+        }
+        ackControl.acknowledge();
+    } else {
+        // Handle workflow failure
+        workflowService.markStepFailed(email.getId(), error.getMessage());
+        
+        // Retry logic based on workflow criticality
+        boolean isCritical = "order_confirmation".equals(email.getMetadata().get("workflow_type"));
+        if (isCritical && isRetryableError(error)) {
+            // Don't acknowledge - let it retry
+            logger.warn("Critical email failed, will retry: {}", error.getMessage());
+        } else {
+            ackControl.acknowledge();
+        }
+    }
 }
 ```
 
-### KafNotif Way (Zero Code!)
+### ⚙️ **Configuration Options**
+
 ```java
-@KafNotifListener(value = NotificationType.EMAIL, concurrency = 10)
-public void emailProcessor() {
-    // THAT'S IT! KafNotif automatically sends via JavaMail!
-}
+@KafNotifListener(
+    value = NotificationType.EMAIL,           // Notification type
+    concurrency = 5,                          // Concurrent consumers
+    ackMode = AckMode.MANUAL,                 // Manual acknowledgment control
+    threadingMode = ThreadingMode.VIRTUAL_THREADS, // Java 21+ Virtual Threads
+    maxRetries = 3,                           // Retry attempts
+    groupId = "email-processors",             // Custom consumer group
+    afterSend = "customAfterHook"             // Your custom hook
+)
 ```
 
-## 📁 Examples
+## 📦 Supported Notification Types
 
-Check out the [automatic-processing-example](kafnotif-examples/automatic-processing-example/) for a complete Spring Boot demo with:
-- 🤖 **Automatic processing** for all notification types  
-- 🎛️ **REST API** to test notifications
-- ⚙️ **Configuration examples** for real providers
-- 🔧 **Console fallbacks** for testing without external services
-
-## Key Features in Detail
-
-### 🚀 Auto-Topic Creation
-```java
-// Topics are automatically created when first used
-NotificationPublisher publisher = KafNotif.createPublisher("localhost:9092");
-// Creates: notifications.email, notifications.sms, notifications.push, etc.
-```
-
-### 🧵 Threading Modes
-```java
-ConsumerConfig config = new ConsumerConfig("my-app")
-    .threadingMode(ThreadingMode.VIRTUAL_THREADS)  // Java 21+ virtual threads
-    .threadingMode(ThreadingMode.PLATFORM_THREADS) // Traditional OS threads
-    .threadingMode(ThreadingMode.SINGLE_THREADED)   // Single thread processing
-    .concurrency(5); // Number of concurrent consumers
-```
-
-### 🪝 Lifecycle Hooks
-```java
-NotificationHooks hooks = new NotificationHooks() {
-    @Override
-    public boolean beforeSend(NotificationEvent notification) {
-        // Store in database before sending
-        database.save(notification);
-        return true; // Continue with sending
-    }
-    
-    @Override
-    public void afterSend(NotificationEvent notification, boolean success, Throwable error) {
-        // Update status in database
-        database.updateStatus(notification.getId(), success ? "SENT" : "FAILED");
-    }
-};
-
-ConsumerConfig config = new ConsumerConfig("my-app").hooks(hooks);
-```
-
-### ⚙️ Manual ACK Control
-```java
-ConsumerConfig config = new ConsumerConfig("my-app")
-    .autoCommit(false)    // Manual acknowledgment
-    .maxRetries(3)        // Retry failed messages
-    .enableDlq(true);     // Dead letter queue for failed messages
-```
-
-## ⚙️ Configuration
-
-### Application Properties
+### 📧 **Email (JavaMail)**
 ```yaml
-# KafNotif Core Configuration
 kafnotif:
-  bootstrap-servers: localhost:9092
-  group-id: my-app
-  topic-prefix: notifications
-  threading-mode: VIRTUAL_THREADS
-  concurrency: 5
-  ack-mode: MANUAL
-  max-retries: 3
-  enable-dlq: true
-  
-  # 🔧 Provider Configuration (Optional - uses console fallback if not set)
   providers:
-    # 📧 Email via JavaMail
     email:
       enabled: true
       smtp-host: smtp.gmail.com
       smtp-port: 587
-      username: ${EMAIL_USERNAME}
-      password: ${EMAIL_APP_PASSWORD}
-      from-email: notifications@yourcompany.com
-    
-    # 🔔 Push via Firebase FCM  
-    firebase:
-      enabled: true
-      service-account-path: ${FIREBASE_SERVICE_ACCOUNT}
-    
-    # 📱 SMS via Twilio
-    twilio:
-      enabled: true
-      account-sid: ${TWILIO_ACCOUNT_SID}
-      auth-token: ${TWILIO_AUTH_TOKEN}
-      from-phone: ${TWILIO_FROM_PHONE}
-    
-    # 💬 Slack via Webhook
-    slack:
-      enabled: true
-      webhook-url: ${SLACK_WEBHOOK_URL}
-    
-    # 🎮 Discord via Webhook
-    discord:
-      enabled: true
-      webhook-url: ${DISCORD_WEBHOOK_URL}
+      username: your-email@gmail.com
+      password: your-app-password
+      from-email: noreply@yourapp.com
 ```
 
-**💡 Smart Fallbacks**: If providers aren't configured, KafNotif uses console logging for testing!
+### 📱 **Push Notifications (Firebase FCM)**
+```yaml
+kafnotif:
+  providers:
+    push:
+      enabled: true
+      firebase-credentials-path: /path/to/service-account.json
+```
 
-## Contributing
+### 📲 **SMS (Twilio)**
+```yaml
+kafnotif:
+  providers:
+    sms:
+      enabled: true
+      account-sid: your-twilio-sid
+      auth-token: your-twilio-token
+      from-number: +1234567890
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+### 💬 **Slack & Discord**
+```yaml
+kafnotif:
+  providers:
+    slack:
+      enabled: true
+      webhook-url: https://hooks.slack.com/services/...
+    discord:
+      enabled: true
+      webhook-url: https://discord.com/api/webhooks/...
+```
 
-## License
+## 🛠️ Development Setup
+
+### 🐳 **MailCatcher for Email Testing**
+```bash
+# Start MailCatcher
+docker run -d -p 1080:1080 -p 1025:1025 schickling/mailcatcher
+
+# Configure KafNotif for MailCatcher
+kafnotif:
+  providers:
+    email:
+      enabled: true
+      smtp-host: localhost
+      smtp-port: 1025
+      from-email: test@kafnotif.com
+      # No username/password needed for MailCatcher
+```
+
+View emails at: http://localhost:1080
+
+### 🔧 **IDE Integration**
+KafNotif includes `@EventListener` annotation for perfect IntelliJ IDEA integration:
+- ✅ No "unused method" warnings
+- ✅ Full Spring framework recognition
+- ✅ Perfect developer experience
+
+## 🚀 Production Deployment
+
+### 🎯 **Best Practices**
+- Use **Manual ACK mode** with afterSend hooks for critical notifications
+- Configure **appropriate concurrency** based on your throughput needs
+- Set up **monitoring** for Dead Letter Queue topics
+- Use **Virtual Threads** for high concurrency (Java 21+)
+- Implement **comprehensive error handling** in afterSend hooks
+
+### 📊 **Monitoring**
+```java
+// Monitor processing metrics in your afterSend hooks
+public void monitoringHook(EmailNotification email, boolean success, Exception error, AckControl ackControl) {
+    meterRegistry.counter("kafnotif.email.processed", 
+        "status", success ? "success" : "failure",
+        "recipient_domain", extractDomain(email.getRecipient())
+    ).increment();
+    
+    if (success) {
+        ackControl.acknowledge();
+    } else {
+        // Handle based on error type
+        handleError(email, error, ackControl);
+    }
+}
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our contributing guidelines and feel free to:
+- 🐛 Report issues
+- 💡 Submit feature requests
+- 🔧 Create pull requests
+- 📚 Improve documentation
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**🎉 Ready to revolutionize your notification system? Get started with KafNotif today!**
+
+[![JitPack](https://jitpack.io/v/sinamehrabi/KafNotif.svg)](https://jitpack.io/#sinamehrabi/KafNotif)
