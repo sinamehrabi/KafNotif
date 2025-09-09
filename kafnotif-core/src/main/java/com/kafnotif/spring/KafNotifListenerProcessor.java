@@ -227,36 +227,48 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
      * Find and validate the afterSend method with proper signature
      */
     private Method findAfterSendMethod(Class<?> beanClass, String methodName) throws NoSuchMethodException {
-        // Try to find method with exact signature: (NotificationEvent, boolean, Exception, AckControl)
-        try {
-            Method method = beanClass.getDeclaredMethod(methodName, 
-                NotificationEvent.class, boolean.class, Exception.class, AckControl.class);
-            logger.debug("Found afterSend method with full signature: {}.{}", beanClass.getSimpleName(), methodName);
-            return method;
-        } catch (NoSuchMethodException e) {
-            // Try alternative signature: (NotificationEvent, boolean, Throwable, AckControl)
-            try {
-                Method method = beanClass.getDeclaredMethod(methodName, 
-                    NotificationEvent.class, boolean.class, Throwable.class, AckControl.class);
-                logger.debug("Found afterSend method with Throwable signature: {}.{}", beanClass.getSimpleName(), methodName);
-                return method;
-            } catch (NoSuchMethodException e2) {
-                // Try simplified signature: (NotificationEvent, boolean)
-                try {
-                    Method method = beanClass.getDeclaredMethod(methodName, NotificationEvent.class, boolean.class);
-                    logger.debug("Found afterSend method with simplified signature: {}.{}", beanClass.getSimpleName(), methodName);
+        // Get all methods with the specified name
+        Method[] methods = beanClass.getDeclaredMethods();
+        for (Method method : methods) {
+            if (!method.getName().equals(methodName)) {
+                continue;
+            }
+            
+            Class<?>[] paramTypes = method.getParameterTypes();
+            
+            // Check for valid signatures
+            if (paramTypes.length == 4) {
+                // Full signature: (NotificationEvent/EmailNotification/etc, boolean, Exception/Throwable, AckControl)
+                Class<?> firstParam = paramTypes[0];
+                Class<?> thirdParam = paramTypes[2];
+                
+                if (NotificationEvent.class.isAssignableFrom(firstParam) && 
+                    paramTypes[1] == boolean.class &&
+                    (Exception.class.isAssignableFrom(thirdParam) || Throwable.class.isAssignableFrom(thirdParam)) &&
+                    AckControl.class.isAssignableFrom(paramTypes[3])) {
+                    
+                    logger.debug("Found afterSend method with full signature: {}.{} ({})", 
+                        beanClass.getSimpleName(), methodName, firstParam.getSimpleName());
                     return method;
-                } catch (NoSuchMethodException e3) {
-                    throw new NoSuchMethodException(
-                        String.format("Method '%s' not found with any valid afterSend signature in class %s. " +
-                                     "Expected signatures: " +
-                                     "(NotificationEvent, boolean, Exception, AckControl) or " +
-                                     "(NotificationEvent, boolean, Throwable, AckControl) or " +
-                                     "(NotificationEvent, boolean)", 
-                                     methodName, beanClass.getSimpleName()));
+                }
+            } else if (paramTypes.length == 2) {
+                // Simplified signature: (NotificationEvent/EmailNotification/etc, boolean)
+                Class<?> firstParam = paramTypes[0];
+                
+                if (NotificationEvent.class.isAssignableFrom(firstParam) && paramTypes[1] == boolean.class) {
+                    logger.debug("Found afterSend method with simplified signature: {}.{} ({})", 
+                        beanClass.getSimpleName(), methodName, firstParam.getSimpleName());
+                    return method;
                 }
             }
         }
+        
+        throw new NoSuchMethodException(
+            String.format("Method '%s' not found with any valid afterSend signature in class %s. " +
+                         "Expected signatures: " +
+                         "(NotificationEvent/EmailNotification/etc, boolean, Exception/Throwable, AckControl) or " +
+                         "(NotificationEvent/EmailNotification/etc, boolean)", 
+                         methodName, beanClass.getSimpleName()));
     }
     
     @PreDestroy
