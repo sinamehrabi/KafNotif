@@ -62,4 +62,13 @@ public @interface KafNotifListener {
      * Topic prefix (optional, uses global config if empty)
      */
     String topicPrefix() default "";
+    
+    /**
+     * Optional method name for after-send hook.
+     * The method should have the signature:
+     * public void methodName(NotificationEvent notification, boolean success, Exception error, AckControl ackControl)
+     * 
+     * @return the method name for after-send hook, empty string means no after-send hook
+     */
+    String afterSend() default "";
 }

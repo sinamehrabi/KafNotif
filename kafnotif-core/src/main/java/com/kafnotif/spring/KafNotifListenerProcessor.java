@@ -96,7 +96,7 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
             .enableDlq(properties.isEnableDlq());
         
         // Create hooks that will be called before/after automatic processing
-        config.hooks(createListenerHooks(bean, method));
+        config.hooks(createListenerHooks(bean, method, annotation));
         
         // Create and start the consumer
         NotificationConsumer consumer = new NotificationConsumer(config);
@@ -109,7 +109,20 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
             types, annotation.concurrency(), annotation.ackMode(), annotation.threadingMode());
     }
     
-    private NotificationHooks createListenerHooks(Object bean, Method method) {
+    private NotificationHooks createListenerHooks(Object bean, Method method, KafNotifListener annotation) {
+        // Look up optional afterSend method
+        Method afterSendMethod = null;
+        if (!annotation.afterSend().isEmpty()) {
+            try {
+                afterSendMethod = findAfterSendMethod(bean.getClass(), annotation.afterSend());
+                logger.info("✅ Found afterSend method: {}.{}", bean.getClass().getSimpleName(), annotation.afterSend());
+            } catch (Exception e) {
+                logger.warn("❌ Could not find afterSend method '{}' in class {}: {}", 
+                    annotation.afterSend(), bean.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+        
+        final Method finalAfterSendMethod = afterSendMethod;
         return new NotificationHooks() {
             @Override
             public boolean beforeSend(NotificationEvent notification, AckControl ackControl) {
@@ -141,6 +154,27 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
             
             @Override
             public void afterSend(NotificationEvent notification, boolean success, Throwable error, AckControl ackControl) {
+                // Call user's afterSend method if specified
+                if (finalAfterSendMethod != null) {
+                    try {
+                        logger.debug("Calling afterSend hook: {}.{}", bean.getClass().getSimpleName(), finalAfterSendMethod.getName());
+                        finalAfterSendMethod.setAccessible(true);
+                        
+                        // Call method based on its signature
+                        Class<?>[] paramTypes = finalAfterSendMethod.getParameterTypes();
+                        if (paramTypes.length == 4) {
+                            // Full signature: (NotificationEvent, boolean, Exception/Throwable, AckControl)
+                            finalAfterSendMethod.invoke(bean, notification, success, error, ackControl);
+                        } else if (paramTypes.length == 2) {
+                            // Simplified signature: (NotificationEvent, boolean)
+                            finalAfterSendMethod.invoke(bean, notification, success);
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error in afterSend hook {}.{}: {}", 
+                            bean.getClass().getSimpleName(), finalAfterSendMethod.getName(), e.getMessage(), e);
+                    }
+                }
+                
                 if (success) {
                     logger.debug("✅ Automatic processing completed for {}: {} -> {}", 
                         notification.getNotificationType(), notification.getId(), notification.getRecipient());
@@ -179,6 +213,42 @@ public class KafNotifListenerProcessor implements BeanPostProcessor, Application
             return annotation.groupId();
         }
         return properties.getGroupId();
+    }
+    
+    /**
+     * Find and validate the afterSend method with proper signature
+     */
+    private Method findAfterSendMethod(Class<?> beanClass, String methodName) throws NoSuchMethodException {
+        // Try to find method with exact signature: (NotificationEvent, boolean, Exception, AckControl)
+        try {
+            Method method = beanClass.getDeclaredMethod(methodName, 
+                NotificationEvent.class, boolean.class, Exception.class, AckControl.class);
+            logger.debug("Found afterSend method with full signature: {}.{}", beanClass.getSimpleName(), methodName);
+            return method;
+        } catch (NoSuchMethodException e) {
+            // Try alternative signature: (NotificationEvent, boolean, Throwable, AckControl)
+            try {
+                Method method = beanClass.getDeclaredMethod(methodName, 
+                    NotificationEvent.class, boolean.class, Throwable.class, AckControl.class);
+                logger.debug("Found afterSend method with Throwable signature: {}.{}", beanClass.getSimpleName(), methodName);
+                return method;
+            } catch (NoSuchMethodException e2) {
+                // Try simplified signature: (NotificationEvent, boolean)
+                try {
+                    Method method = beanClass.getDeclaredMethod(methodName, NotificationEvent.class, boolean.class);
+                    logger.debug("Found afterSend method with simplified signature: {}.{}", beanClass.getSimpleName(), methodName);
+                    return method;
+                } catch (NoSuchMethodException e3) {
+                    throw new NoSuchMethodException(
+                        String.format("Method '%s' not found with any valid afterSend signature in class %s. " +
+                                     "Expected signatures: " +
+                                     "(NotificationEvent, boolean, Exception, AckControl) or " +
+                                     "(NotificationEvent, boolean, Throwable, AckControl) or " +
+                                     "(NotificationEvent, boolean)", 
+                                     methodName, beanClass.getSimpleName()));
+                }
+            }
+        }
     }
     
     @PreDestroy
