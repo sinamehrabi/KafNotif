@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import com.kafnotif.kafka.NotificationPublisher;
+import com.kafnotif.model.DiscordNotification;
 import com.kafnotif.model.EmailNotification;
 import com.kafnotif.model.PushNotification;
 import com.kafnotif.model.SlackNotification;
@@ -58,6 +59,24 @@ public class NotificationController {
 
         publisher.publishNotification(slack);
         return "💬 Slack notification sent to #" + channel;
+    }
+
+    @PostMapping("/discord")
+    public String sendDiscord(@RequestBody Map<String, String> request) {
+        String channel = request.getOrDefault("channel", "general");
+        String content = request.getOrDefault("content", "Test Discord message from KafNotif at " + LocalDateTime.now());
+        String username = request.getOrDefault("username", "KafNotif Bot");
+        
+        // For multi-channel Discord, we use the channelId constructor
+        // The webhook URL will be resolved automatically by MultiChannelDiscordWebhookNotifier
+        String webhookUrl = "https://discord.com/api/webhooks/PLACEHOLDER"; // Will be resolved by channel config
+
+        DiscordNotification discord = new DiscordNotification(channel, content, webhookUrl);
+        discord.setUsername(username);
+        discord.setAvatarUrl("https://example.com/avatar.png");
+
+        publisher.publishNotification(discord);
+        return "🎮 Discord notification sent to #" + channel;
     }
 
     @GetMapping("/health")

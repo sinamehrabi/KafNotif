@@ -78,7 +78,7 @@ public void emailAfterHook(EmailNotification email, boolean success, Exception e
 <dependency>
     <groupId>com.github.sinamehrabi</groupId>
     <artifactId>KafNotif</artifactId>
-    <version>v0.1.6</version>
+    <version>v0.1.7</version>
 </dependency>
 ```
 
@@ -386,6 +386,57 @@ publisher.publishNotification(richMsg);
 slack:
   enabled: true
   webhook-url: https://hooks.slack.com/services/T.../B.../single-webhook
+```
+
+## 🎮 **Multi-Channel Discord Usage Examples**
+
+```java
+// Send to specific Discord channels with automatic webhook routing  
+DiscordNotification alertMsg = new DiscordNotification("alerts", "🚨 Database connection lost!", "placeholder");
+// Uses alerts webhook automatically, applies "🚨 Alert System" username
+publisher.publishNotification(alertMsg);
+
+DiscordNotification reportMsg = new DiscordNotification("reports", "📊 Daily analytics ready", "placeholder");
+// Uses reports webhook automatically, applies "📊 Report Bot" username
+publisher.publishNotification(reportMsg);
+
+DiscordNotification devMsg = new DiscordNotification("dev-team", "🚀 Deployment completed v2.1.0", "placeholder");
+devMsg.setUsername("🚀 Deploy Bot"); // Override default username
+devMsg.setAvatarUrl("https://example.com/deploy-avatar.png");
+publisher.publishNotification(devMsg);
+
+// Send to default channel (fallback)
+DiscordNotification generalMsg = new DiscordNotification("general", "📢 System maintenance tonight", "placeholder");
+publisher.publishNotification(generalMsg);
+
+// Advanced usage with embeds
+DiscordNotification richMsg = new DiscordNotification("alerts", "Critical Issue Detected", "placeholder");
+richMsg.setUsername("🔥 Critical Alert");
+
+// Add Discord embeds for rich formatting
+List<DiscordNotification.DiscordEmbed> embeds = new ArrayList<>();
+DiscordNotification.DiscordEmbed embed = new DiscordNotification.DiscordEmbed();
+embed.setTitle("Database Error");
+embed.setDescription("Connection timeout after 30s");
+embed.setColor(16711680); // Red color
+embeds.add(embed);
+richMsg.setEmbeds(embeds);
+
+publisher.publishNotification(richMsg);
+```
+
+### 🎯 **Discord Channel-Based Bot Personas**
+- **alerts** → "🚨 Alert System" - For urgent notifications
+- **reports** → "📊 Report Bot" - For analytics and metrics  
+- **dev-team** → "🔧 Dev Bot" - For deployment and development updates
+- **general** → "🤖 KafNotif Bot" - For general announcements
+
+### ✅ **Discord Backward Compatibility**
+```yaml
+# Old single-webhook configuration still works
+discord:
+  enabled: true
+  webhook-url: https://discord.com/api/webhooks/YOUR/SINGLE/WEBHOOK
 ```
 
 ## 📦 Supported Notification Types

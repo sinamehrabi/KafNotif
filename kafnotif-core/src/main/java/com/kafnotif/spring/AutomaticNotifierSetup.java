@@ -147,9 +147,18 @@ public class AutomaticNotifierSetup {
     
     private void setupDiscordNotifier() {
         try {
-            DiscordWebhookNotifier discordNotifier = new DiscordWebhookNotifier(discord.getWebhookUrl());
+            MultiChannelDiscordWebhookNotifier discordNotifier = new MultiChannelDiscordWebhookNotifier(discord);
             NotifierFactory.registerNotifier(NotificationType.DISCORD, discordNotifier);
-            logger.info("🎮 Discord webhook notifier registered");
+            
+            // Log configuration details
+            if (!discord.getChannels().isEmpty()) {
+                logger.info("🎮 Multi-channel Discord webhook notifier registered with {} channels", discord.getChannels().size());
+                for (String channel : discord.getChannels().keySet()) {
+                    logger.debug("  📄 Discord channel configured: #{}", channel);
+                }
+            } else {
+                logger.info("🎮 Discord webhook notifier registered (single webhook mode)");
+            }
         } catch (Exception e) {
             logger.error("Failed to setup Discord notifier, using console fallback", e);
             setupConsoleDiscordNotifier();
@@ -329,12 +338,58 @@ public class AutomaticNotifierSetup {
     
     public static class DiscordConfig {
         private boolean enabled = false;
-        private String webhookUrl;
+        private String defaultChannel = "general";
+        private String webhookUrl; // Backward compatibility
+        private Map<String, DiscordChannelConfig> channels = new HashMap<>();
         
-        public boolean isEnabled() { return enabled && webhookUrl != null; }
+        public boolean isEnabled() { 
+            return enabled && (webhookUrl != null || !channels.isEmpty()); 
+        }
+        
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        
+        // Backward compatibility
         public String getWebhookUrl() { return webhookUrl; }
         public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
+        
+        // New multi-channel support
+        public String getDefaultChannel() { return defaultChannel; }
+        public void setDefaultChannel(String defaultChannel) { this.defaultChannel = defaultChannel; }
+        
+        public Map<String, DiscordChannelConfig> getChannels() { return channels; }
+        public void setChannels(Map<String, DiscordChannelConfig> channels) { this.channels = channels; }
+        
+        /**
+         * Get webhook URL for a specific channel
+         */
+        public String getWebhookUrlForChannel(String channel) {
+            if (channels.containsKey(channel)) {
+                return channels.get(channel).getWebhookUrl();
+            }
+            // Fallback to default webhook URL for backward compatibility
+            return webhookUrl;
+        }
+        
+        /**
+         * Get default username for a specific channel
+         */
+        public String getDefaultUsernameForChannel(String channel) {
+            if (channels.containsKey(channel)) {
+                return channels.get(channel).getDefaultUsername();
+            }
+            return null; // Discord doesn't have a global default username like Slack
+        }
+    }
+    
+    public static class DiscordChannelConfig {
+        private String webhookUrl;
+        private String defaultUsername;
+        
+        public String getWebhookUrl() { return webhookUrl; }
+        public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
+        
+        public String getDefaultUsername() { return defaultUsername; }
+        public void setDefaultUsername(String defaultUsername) { this.defaultUsername = defaultUsername; }
     }
     
     // Getters and setters for main configs

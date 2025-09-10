@@ -66,10 +66,26 @@ kafnotif:
           webhook-url: https://hooks.slack.com/services/YOUR/DEV/WEBHOOK
           default-username: "🔧 Dev Bot"
 
-    # 🎮 Discord via Webhook (configure to use real Discord)
+    # 🎮 Multi-channel Discord configuration
     discord:
-      enabled: false                    # Set to true + add webhook URL to use Discord
-      webhook-url: https://discord.com/api/webhooks/YOUR/DISCORD/WEBHOOK
+      enabled: true
+      default-channel: general
+      channels:
+        general:
+          webhook-url: https://discord.com/api/webhooks/YOUR/GENERAL/WEBHOOK
+          default-username: "🤖 KafNotif Bot"
+        alerts:
+          webhook-url: https://discord.com/api/webhooks/YOUR/ALERTS/WEBHOOK
+          default-username: "🚨 Alert System"
+        reports:
+          webhook-url: https://discord.com/api/webhooks/YOUR/REPORTS/WEBHOOK
+          default-username: "📊 Report Bot"
+        dev-team:
+          webhook-url: https://discord.com/api/webhooks/YOUR/DEV/WEBHOOK
+          default-username: "🔧 Dev Bot"
+      
+      # Single webhook (backward compatibility)
+      # webhook-url: https://discord.com/api/webhooks/YOUR/SINGLE/WEBHOOK
 
 # 💡 TIP: All providers default to console logging if not configured
 # This way you can test the system without setting up external services!

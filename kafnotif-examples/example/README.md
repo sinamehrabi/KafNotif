@@ -48,6 +48,13 @@ curl -X POST http://localhost:8080/api/notifications/slack \
   -d '{"channel": "alerts", "text": "Test alert message"}'
 ```
 
+**Send Discord Message:**
+```bash
+curl -X POST http://localhost:8080/api/notifications/discord \
+  -H "Content-Type: application/json" \
+  -d '{"channel": "alerts", "content": "Test Discord alert!", "username": "Alert Bot"}'
+```
+
 **Health Check:**
 ```bash
 curl http://localhost:8080/api/notifications/health
@@ -97,13 +104,42 @@ kafnotif:
           webhook-url: https://hooks.slack.com/services/YOUR/ALERTS/WEBHOOK
 ```
 
+## 🎮 Discord Configuration
+
+Configure multiple Discord channels with individual webhooks:
+
+```yaml
+kafnotif:
+  providers:
+    discord:
+      enabled: true
+      default-channel: general
+      channels:
+        general:
+          webhook-url: https://discord.com/api/webhooks/YOUR/GENERAL/WEBHOOK
+          default-username: "🤖 KafNotif Bot"
+        alerts:
+          webhook-url: https://discord.com/api/webhooks/YOUR/ALERTS/WEBHOOK
+          default-username: "🚨 Alert System"
+        reports:
+          webhook-url: https://discord.com/api/webhooks/YOUR/REPORTS/WEBHOOK
+          default-username: "📊 Report Bot"
+```
+
+**Get Discord Webhook URLs:**
+1. Go to Discord Server Settings → Integrations → Webhooks
+2. Create New Webhook or edit existing one
+3. Copy Webhook URL for each channel
+4. Update `application.yml` with your webhook URLs
+
 ## 🎯 Key Features Demonstrated
 
-- **✅ Auto-processing** - Email & Push automatically sent via concrete implementations
+- **✅ Auto-processing** - Email, Push, Slack & Discord automatically sent via concrete implementations
 - **🎛️ Custom afterSend hooks** - Full control over post-processing
 - **📧 Email via JavaMail** - Configured for MailCatcher development setup
 - **🔔 Push via Firebase FCM** - Real push notifications to mobile devices
-- **💬 Multi-channel Slack** - Different webhooks per channel
+- **💬 Multi-channel Slack** - Different webhooks per channel with custom usernames
+- **🎮 Multi-channel Discord** - Different webhooks per channel with custom usernames
 - **🧵 Virtual Threads** - Java 21+ high-performance concurrency
 - **📋 Manual ACK** - Precise message acknowledgment control
 - **⚙️ Configuration** - Production-ready setup examples
@@ -115,9 +151,10 @@ src/main/java/com/example/demo/
 ├── DemoApplication.java           # Spring Boot main class
 ├── NotificationController.java    # REST endpoints
 ├── listeners/
-│   ├── EmailNotificationListener.java  # Email handling with afterSend hook
-│   ├── PushNotificationListener.java   # Push notification handling
-│   └── SlackNotificationListener.java  # Slack handling
+│   ├── EmailNotificationListener.java   # Email handling with afterSend hook
+│   ├── PushNotificationListener.java    # Push notification handling
+│   ├── SlackNotificationListener.java   # Slack handling
+│   └── DiscordNotificationListener.java # Discord handling
 ├── NotificationConfiguration.java # Bean configuration
 
 src/main/resources/
