@@ -72,16 +72,19 @@ kafnotif:
       default-channel: general
       channels:
         general:
-          webhook-url: https://discord.com/api/webhooks/YOUR/GENERAL/WEBHOOK
+          webhook-url: ${DISCORD_GENERAL_WEBHOOK_URL:https://discord.com/api/webhooks/YOUR/GENERAL/WEBHOOK}
           default-username: "🤖 KafNotif Bot"
+        other:
+          webhook-url: ${DISCORD_OTHER_WEBHOOK_URL:https://discord.com/api/webhooks/YOUR/OTHER/WEBHOOK}
+          default-username: "🔧 Other Bot"
         alerts:
-          webhook-url: https://discord.com/api/webhooks/YOUR/ALERTS/WEBHOOK
+          webhook-url: ${DISCORD_ALERTS_WEBHOOK_URL:https://discord.com/api/webhooks/YOUR/ALERTS/WEBHOOK}
           default-username: "🚨 Alert System"
         reports:
-          webhook-url: https://discord.com/api/webhooks/YOUR/REPORTS/WEBHOOK
+          webhook-url: ${DISCORD_REPORTS_WEBHOOK_URL:https://discord.com/api/webhooks/YOUR/REPORTS/WEBHOOK}
           default-username: "📊 Report Bot"
         dev-team:
-          webhook-url: https://discord.com/api/webhooks/YOUR/DEV/WEBHOOK
+          webhook-url: ${DISCORD_DEV_WEBHOOK_URL:https://discord.com/api/webhooks/YOUR/DEV/WEBHOOK}
           default-username: "🔧 Dev Bot"
       
       # Single webhook (backward compatibility)

@@ -46,6 +46,19 @@ public class DiscordNotification extends NotificationEvent {
         this.channelId = channelId;
     }
 
+    /**
+     * Factory method for creating multi-channel Discord notifications
+     * The webhook URL will be resolved automatically based on the channel
+     * @param channelId the Discord channel ID (e.g., "general", "alerts", "other")
+     * @param content the message content
+     * @return a new DiscordNotification configured for multi-channel routing
+     */
+    public static DiscordNotification forChannel(String channelId, String content) {
+        DiscordNotification notification = new DiscordNotification("placeholder", content);
+        notification.setChannelId(channelId);
+        return notification;
+    }
+
     @Override
     public boolean isValid() {
         return (content != null && !content.trim().isEmpty()) &&

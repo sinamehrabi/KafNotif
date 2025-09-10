@@ -67,11 +67,9 @@ public class NotificationController {
         String content = request.getOrDefault("content", "Test Discord message from KafNotif at " + LocalDateTime.now());
         String username = request.getOrDefault("username", "KafNotif Bot");
         
-        // For multi-channel Discord, we use the channelId constructor
-        // The webhook URL will be resolved automatically by MultiChannelDiscordWebhookNotifier
-        String webhookUrl = "https://discord.com/api/webhooks/PLACEHOLDER"; // Will be resolved by channel config
-
-        DiscordNotification discord = new DiscordNotification(channel, content, webhookUrl);
+        // For multi-channel Discord, use the factory method with just channel and content
+        // The webhook URL will be resolved automatically during processing by MultiChannelDiscordWebhookNotifier
+        DiscordNotification discord = DiscordNotification.forChannel(channel, content);
         discord.setUsername(username);
         discord.setAvatarUrl("https://example.com/avatar.png");
 
