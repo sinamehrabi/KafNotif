@@ -3,12 +3,15 @@ package com.kafnotif.spring;
 import com.kafnotif.model.NotificationType;
 import com.kafnotif.notifier.NotifierFactory;
 import com.kafnotif.notifier.impl.*;
+import com.kafnotif.notifier.impl.MultiChannelSlackWebhookNotifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Automatically sets up concrete notifier implementations based on configuration
@@ -127,9 +130,15 @@ public class AutomaticNotifierSetup {
     
     private void setupSlackNotifier() {
         try {
-            SlackWebhookNotifier slackNotifier = new SlackWebhookNotifier(slack.getWebhookUrl());
+            MultiChannelSlackWebhookNotifier slackNotifier = new MultiChannelSlackWebhookNotifier(slack);
             NotifierFactory.registerNotifier(NotificationType.SLACK, slackNotifier);
-            logger.info("💬 Slack webhook notifier registered");
+            
+            if (!slack.getChannels().isEmpty()) {
+                logger.info("💬 Multi-channel Slack webhook notifier registered with {} channels: {}", 
+                    slack.getChannels().size(), slack.getChannels().keySet());
+            } else {
+                logger.info("💬 Slack webhook notifier registered (single webhook mode)");
+            }
         } catch (Exception e) {
             logger.error("Failed to setup Slack notifier, using console fallback", e);
             setupConsoleSlackNotifier();
@@ -264,12 +273,58 @@ public class AutomaticNotifierSetup {
     
     public static class SlackConfig {
         private boolean enabled = false;
-        private String webhookUrl;
+        private String defaultChannel = "general";
+        private String webhookUrl; // Backward compatibility
+        private Map<String, SlackChannelConfig> channels = new HashMap<>();
         
-        public boolean isEnabled() { return enabled && webhookUrl != null; }
+        public boolean isEnabled() { 
+            return enabled && (webhookUrl != null || !channels.isEmpty()); 
+        }
+        
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        
+        // Backward compatibility
         public String getWebhookUrl() { return webhookUrl; }
         public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
+        
+        // New multi-channel support
+        public String getDefaultChannel() { return defaultChannel; }
+        public void setDefaultChannel(String defaultChannel) { this.defaultChannel = defaultChannel; }
+        
+        public Map<String, SlackChannelConfig> getChannels() { return channels; }
+        public void setChannels(Map<String, SlackChannelConfig> channels) { this.channels = channels; }
+        
+        /**
+         * Get webhook URL for a specific channel
+         */
+        public String getWebhookUrlForChannel(String channel) {
+            if (channels.containsKey(channel)) {
+                return channels.get(channel).getWebhookUrl();
+            }
+            // Fallback to default webhook URL for backward compatibility
+            return webhookUrl;
+        }
+        
+        /**
+         * Get default username for a specific channel
+         */
+        public String getDefaultUsernameForChannel(String channel) {
+            if (channels.containsKey(channel)) {
+                return channels.get(channel).getDefaultUsername();
+            }
+            return null; // No default username
+        }
+    }
+    
+    public static class SlackChannelConfig {
+        private String webhookUrl;
+        private String defaultUsername;
+        
+        public String getWebhookUrl() { return webhookUrl; }
+        public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
+        
+        public String getDefaultUsername() { return defaultUsername; }
+        public void setDefaultUsername(String defaultUsername) { this.defaultUsername = defaultUsername; }
     }
     
     public static class DiscordConfig {

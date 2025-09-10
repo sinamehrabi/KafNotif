@@ -78,7 +78,7 @@ public void emailAfterHook(EmailNotification email, boolean success, Exception e
 <dependency>
     <groupId>com.github.sinamehrabi</groupId>
     <artifactId>KafNotif</artifactId>
-    <version>v0.1.4</version>
+    <version>v0.1.5</version>
 </dependency>
 ```
 
@@ -327,6 +327,60 @@ public void triggerWorkflow(EmailNotification email, boolean success, Exception 
 )
 ```
 
+## 💬 **Multi-Channel Slack Usage Examples**
+
+```java
+// Send to specific channels with automatic webhook routing
+SlackNotification alertMsg = new SlackNotification("alerts", "🚨 Database connection lost!");
+// Uses alerts webhook automatically, applies "🚨 Alert System" username
+publisher.publishNotification(alertMsg);
+
+SlackNotification reportMsg = new SlackNotification("reports", "📊 Daily analytics ready");
+// Uses reports webhook automatically, applies "📊 Report Bot" username
+publisher.publishNotification(reportMsg);
+
+SlackNotification devMsg = new SlackNotification("dev-team", "🚀 Deployment completed v2.1.0");
+devMsg.setUsername("🚀 Deploy Bot"); // Override default username
+devMsg.setIconEmoji(":rocket:");
+publisher.publishNotification(devMsg);
+
+// Send to default channel (fallback)
+SlackNotification generalMsg = new SlackNotification("general", "📢 System maintenance tonight");
+publisher.publishNotification(generalMsg);
+
+// Advanced usage with blocks and attachments
+SlackNotification richMsg = new SlackNotification("alerts", "Critical Issue Detected");
+richMsg.setUsername("🔥 Critical Alert");
+richMsg.setIconEmoji(":fire:");
+
+// Add Slack blocks for rich formatting
+List<Map<String, Object>> blocks = new ArrayList<>();
+Map<String, Object> block = new HashMap<>();
+block.put("type", "section");
+Map<String, Object> text = new HashMap<>();
+text.put("type", "mrkdwn");
+text.put("text", "*Database Error*\n:warning: Connection timeout after 30s");
+block.put("text", text);
+blocks.add(block);
+richMsg.setBlocks(blocks);
+
+publisher.publishNotification(richMsg);
+```
+
+### 🎯 **Channel-Based Bot Personas**
+- **alerts** → "🚨 Alert System" - For urgent notifications
+- **reports** → "📊 Report Bot" - For analytics and metrics  
+- **dev-team** → "🔧 Dev Bot" - For deployment and development updates
+- **general** → "📢 KafNotif Bot" - For general announcements
+
+### ✅ **Backward Compatibility**
+```yaml
+# Old single-webhook configuration still works
+slack:
+  enabled: true
+  webhook-url: https://hooks.slack.com/services/T.../B.../single-webhook
+```
+
 ## 📦 Supported Notification Types
 
 ### 📧 **Email (JavaMail)**
@@ -362,13 +416,35 @@ kafnotif:
       from-number: +1234567890
 ```
 
-### 💬 **Slack & Discord**
+### 💬 **Slack (Multi-Channel Support)**
 ```yaml
 kafnotif:
   providers:
     slack:
       enabled: true
-      webhook-url: https://hooks.slack.com/services/...
+      default-channel: general
+      channels:
+        general:
+          webhook-url: https://hooks.slack.com/services/T.../B.../general-webhook
+          default-username: "📢 KafNotif Bot"
+        alerts:
+          webhook-url: https://hooks.slack.com/services/T.../B.../alerts-webhook
+          default-username: "🚨 Alert System"
+        reports:
+          webhook-url: https://hooks.slack.com/services/T.../B.../reports-webhook
+          default-username: "📊 Report Bot"
+        dev-team:
+          webhook-url: https://hooks.slack.com/services/T.../B.../dev-webhook
+          default-username: "🔧 Dev Bot"
+      
+      # Backward compatibility - single webhook
+      # webhook-url: https://hooks.slack.com/services/...
+```
+
+### 🎮 **Discord**
+```yaml
+kafnotif:
+  providers:
     discord:
       enabled: true
       webhook-url: https://discord.com/api/webhooks/...
