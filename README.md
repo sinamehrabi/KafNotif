@@ -78,7 +78,7 @@ public void emailAfterHook(EmailNotification email, boolean success, Exception e
 <dependency>
     <groupId>com.github.sinamehrabi</groupId>
     <artifactId>KafNotif</artifactId>
-    <version>v0.1.3</version>
+    <version>v0.1.4</version>
 </dependency>
 ```
 
