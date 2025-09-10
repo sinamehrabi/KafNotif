@@ -78,7 +78,7 @@ public void emailAfterHook(EmailNotification email, boolean success, Exception e
 <dependency>
     <groupId>com.github.sinamehrabi</groupId>
     <artifactId>KafNotif</artifactId>
-    <version>v0.1.5</version>
+    <version>v0.1.6</version>
 </dependency>
 ```
 
@@ -157,6 +157,13 @@ public class NotificationController {
     }
 }
 ```
+
+## 📚 **Examples**
+
+Ready-to-run examples are available in the [`kafnotif-examples/`](kafnotif-examples/) directory:
+
+- **🎯 [Simple Example](kafnotif-examples/example/)** - Clean Spring Boot app with REST API and listeners
+- **🔧 Manual Integration** - Custom setup for advanced use cases
 
 ## 🎛️ AfterSend Hooks - Complete Guide
 

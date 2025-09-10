@@ -1,0 +1,75 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: kafnotif-example
+
+logging:
+  level:
+    com.kafnotif: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+kafnotif:
+  # Global KafNotif settings
+  bootstrap-servers: localhost:9092
+  group-id: kafnotif-example
+  topic-prefix: notifications
+  threading-mode: VIRTUAL_THREADS
+  concurrency: 5                    # Default concurrency
+  ack-mode: AUTO                     # Default ACK mode
+  max-retries: 3
+  enable-dlq: true
+  auto-create-topics: true
+  
+  # 🚀 PROVIDER CONFIGURATION
+  # KafNotif automatically uses concrete implementations if configured
+  # Otherwise falls back to console logging for demo purposes
+  providers:
+    # 📧 Email via JavaMail (configured for MailCatcher)
+    email:
+      enabled: true                     # ✅ Enabled for MailCatcher testing
+      smtp-host: localhost
+      smtp-port: 1025
+      # MailCatcher doesn't require authentication, so leave username/password empty
+      from-email: test@kafnotif.com
+
+    # 📱 Push via Firebase FCM (configure to use real FCM)
+    firebase:
+      enabled: true                     # Set to true + add service account to use FCM
+      service-account-path: /path/to/service-account.json
+
+    # 📲 SMS via Twilio (configure to use real Twilio)
+    twilio:
+      enabled: false                    # Set to true + add credentials to use Twilio
+      account-sid: your-twilio-sid
+      auth-token: your-twilio-token
+      from-phone: +1234567890
+
+    # 💬 Multi-channel Slack configuration
+    slack:
+      enabled: true
+      default-channel: general
+      channels:
+        general:
+          webhook-url: https://hooks.slack.com/services/YOUR/GENERAL/WEBHOOK
+          default-username: "📢 KafNotif Bot"
+        alerts:
+          webhook-url: https://hooks.slack.com/services/YOUR/ALERTS/WEBHOOK
+          default-username: "🚨 Alert System"
+        reports:
+          webhook-url: https://hooks.slack.com/services/YOUR/REPORTS/WEBHOOK
+          default-username: "📊 Report Bot"
+        dev-team:
+          webhook-url: https://hooks.slack.com/services/YOUR/DEV/WEBHOOK
+          default-username: "🔧 Dev Bot"
+
+    # 🎮 Discord via Webhook (configure to use real Discord)
+    discord:
+      enabled: false                    # Set to true + add webhook URL to use Discord
+      webhook-url: https://discord.com/api/webhooks/YOUR/DISCORD/WEBHOOK
+
+# 💡 TIP: All providers default to console logging if not configured
+# This way you can test the system without setting up external services!

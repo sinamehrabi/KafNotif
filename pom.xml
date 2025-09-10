@@ -6,7 +6,7 @@
     
     <groupId>com.kafnotif</groupId>
     <artifactId>kafnotif-parent</artifactId>
-    <version>0.1.5</version>
+    <version>0.1.6</version>
     <packaging>pom</packaging>
     
     <name>KafNotif Parent</name>
@@ -43,7 +43,6 @@
     
     <modules>
         <module>kafnotif-core</module>
-        <module>kafnotif-examples/automatic-processing-example</module>
     </modules>
     
     <build>
